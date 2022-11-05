@@ -59,7 +59,7 @@ Deme(n, p) = Deme(n, p, NaN)
 ````
 
 ````
-Main.var"##741".Deme
+Main.var"##548".Deme
 ````
 
 Function to compute the allele frequency in a deme
@@ -319,9 +319,9 @@ function plot_sim(xs; kwargs...)
     cs = hcat(getfield.(xs, :proportions)...) |> permutedims
     af = allele_frequency.(xs)
     mw = getfield.(xs, :meanfitness)
-    plot(plot.(genotypes, title="genotype frequency")...,
-         plot(cs, title="cytotype frequency"),
-         plot(af, title="allele frequency"),
+    plot(plot.(genotypes, title="genotype frequency", ylim=(0,1))...,
+         plot(cs, title="cytotype frequency", ylim=(0,1)),
+         plot(af, title="allele frequency", ylim=(0,1)),
          plot(mw, title="mean fitness"); legend=false,
          kwargs...)
 end
@@ -419,6 +419,120 @@ plot_sim(xs, xscale=:log10)
 ![](singledeme-53.svg)
 
 ## Two deme habitat
+
+Now we introduce migration. We are primarily interested in the case with two
+demes undergoing largely independent evolution but with migration at the
+tetraploid level. We assume the following life cycle: `gamete generation ->
+syngamy -> selection -> migration`. Let us assume symmetric bidirectional
+migration.
+
+````julia
+struct TwoDemeHabitat{T}
+    m  :: Vector{T}  # migration rates for the three cytotypes
+    d1 :: Deme{T}
+    d2 :: Deme{T}
+end
+
+function generation(hab::TwoDemeHabitat) where T
+    d1 = generation(hab.d1)
+    d2 = generation(hab.d2)
+    for (k, mk) in enumerate(hab.m)
+        g1 = copy(d1.nodes[k].genotypes)  # copy!
+        g2 = copy(d2.nodes[k].genotypes)
+        d1.nodes[k].genotypes .= (1 - mk) * g1 .+ mk * g2
+        d2.nodes[k].genotypes .= (1 - mk) * g2 .+ mk * g1
+    end
+    TwoDemeHabitat(hab.m, d1, d2)
+end
+
+function plot_sim(xs::Vector{<:TwoDemeHabitat}; kwargs...)
+    p1 = plot_sim(map(x->x.d1, xs); kwargs...)
+    p2 = plot_sim(map(x->x.d2, xs); kwargs...)
+    plot(p1, p2, layout=(2,1), size=(600,600))
+end
+````
+
+````
+plot_sim (generic function with 2 methods)
+````
+
+We construct an example in which one allele is a deleterious recessive in
+deme 1, whereas the other is deleterious recessive in the other. Whereas in
+the single-deme case we would get eventual fixation of the beneficial allele,
+here we expect a migration-selection equilibrium.
+
+````julia
+s = 0.1
+node_diploid  = Node(2, [1., 1., 1-s],         [0.95, 0.05], [1.0, 0.0, 0.0])
+node_triploid = Node(3, [1., 1., 1., 1-s],     [0.05, 0.05], fill(NaN, 4))
+node_tetploid = Node(4, [1., 1., 1., 1., 1-s], [0.00, 0.95], fill(NaN, 5))
+deme1 = Deme([node_diploid, node_triploid, node_tetploid], [1.0, 0.0, 0.0])
+
+node_diploid  = Node(2, [1-s, 1., 1.],         [0.95, 0.05], [0.0, 0.0, 1.0])
+node_triploid = Node(3, [1-s, 1., 1., 1.],     [0.05, 0.05], fill(NaN, 4))
+node_tetploid = Node(4, [1-s, 1., 1., 1., 1.], [0.00, 0.95], fill(NaN, 5))
+deme2 = Deme([node_diploid, node_triploid, node_tetploid], [1.0, 0.0, 0.0])
+````
+
+````
+Deme, allele frequency = 0.0000
+Node (ploidy=2) 1.00, genotypes: 0.0000, 0.0000, 1.0000
+Node (ploidy=3) 0.00, genotypes: NaN, NaN, NaN, NaN
+Node (ploidy=4) 0.00, genotypes: NaN, NaN, NaN, NaN, NaN
+
+````
+
+Note that we initialize the demes as fixed for the locally benefecial allele.
+We assume complete mixing at the tetraploid level, and no migration in the
+other cytotypes.
+
+````julia
+hab = TwoDemeHabitat([0., 0., 0.5], deme1, deme2)
+````
+
+````
+Main.var"##548".TwoDemeHabitat{Float64}([0.0, 0.0, 0.5], Deme, allele frequency = 1.0000
+Node (ploidy=2) 1.00, genotypes: 1.0000, 0.0000, 0.0000
+Node (ploidy=3) 0.00, genotypes: NaN, NaN, NaN, NaN
+Node (ploidy=4) 0.00, genotypes: NaN, NaN, NaN, NaN, NaN
+, Deme, allele frequency = 0.0000
+Node (ploidy=2) 1.00, genotypes: 0.0000, 0.0000, 1.0000
+Node (ploidy=3) 0.00, genotypes: NaN, NaN, NaN, NaN
+Node (ploidy=4) 0.00, genotypes: NaN, NaN, NaN, NaN, NaN
+)
+````
+
+We find the equilibrium numerically:
+
+````julia
+xs = iterate_map(generation, hab, 10000)
+plot_sim(xs, xscale=:log10)
+````
+![](singledeme-61.svg)
+
+The equilibrium allele frequency of the deleterious allele is about 4%.
+
+````julia
+xs[end]
+````
+
+````
+Main.var"##548".TwoDemeHabitat{Float64}([0.0, 0.0, 0.5], Deme, allele frequency = 0.9595
+Node (ploidy=2) 0.89, genotypes: 0.9278, 0.0709, 0.0012
+Node (ploidy=3) 0.11, genotypes: 0.8787, 0.0743, 0.0455, 0.0015
+Node (ploidy=4) 0.00, genotypes: 0.4170, 0.0405, 0.0851, 0.0405, 0.4170
+, Deme, allele frequency = 0.0405
+Node (ploidy=2) 0.89, genotypes: 0.0012, 0.0709, 0.9278
+Node (ploidy=3) 0.11, genotypes: 0.0015, 0.0455, 0.0743, 0.8787
+Node (ploidy=4) 0.00, genotypes: 0.4170, 0.0405, 0.0851, 0.0405, 0.4170
+)
+````
+
+We could compute such equilibria for many local adaptation scenarios,
+polyploid fitnesses, fertilities, migration rates, etc. We could also
+consider other aspects of polyploid genetics currently ignored, such as
+double reduction, and the different ways of generating unreduced gametes
+(first division restitution, second division restitution, ...).
 
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
 
