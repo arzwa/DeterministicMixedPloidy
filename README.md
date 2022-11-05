@@ -59,7 +59,7 @@ Deme(n, p) = Deme(n, p, NaN)
 ````
 
 ````
-Main.var"##626".Deme
+Main.var"##741".Deme
 ````
 
 Function to compute the allele frequency in a deme
@@ -335,17 +335,17 @@ Let us set up some deme which departs strongly from Hardy-Weinberg
 equilibrium, has inviable triploids, and starts with 100% diploids:
 
 ````julia
-node_diploid  = Node(2, ones(3), [0.95, 0.05], [0.35, 0.05, 0.6])
-node_triploid = Node(3, zeros(4), [0.0, 0.0], [0.5, 0.25, 0., 0.25])
-node_tetploid = Node(4, ones(5), [0.0, 1.0], [1. , 0. , 0., 0., 0.])
+node_diploid  = Node(2, ones(3),  [0.95, 0.05], [0.35, 0.05, 0.60])
+node_triploid = Node(3, zeros(4), [0.00, 0.00], fill(NaN, 4))
+node_tetploid = Node(4, ones(5),  [0.00, 1.00], fill(NaN, 5))
 deme = Deme([node_diploid, node_triploid, node_tetploid], [1.0, 0.0, 0.0])
 ````
 
 ````
 Deme, allele frequency = 0.3750
 Node (ploidy=2) 1.00, genotypes: 0.3500, 0.0500, 0.6000
-Node (ploidy=3) 0.00, genotypes: 0.5000, 0.2500, 0.0000, 0.2500
-Node (ploidy=4) 0.00, genotypes: 1.0000, 0.0000, 0.0000, 0.0000, 0.0000
+Node (ploidy=3) 0.00, genotypes: NaN, NaN, NaN, NaN
+Node (ploidy=4) 0.00, genotypes: NaN, NaN, NaN, NaN, NaN
 
 ````
 
@@ -369,8 +369,8 @@ diploids.
 
 ````julia
 node_diploid  = Node(2, ones(3), [0.95, 0.05], [0.35, 0.05, 0.6])
-node_triploid = Node(3, ones(4), [0.05, 0.05], zeros(4))
-node_tetploid = Node(4, ones(5), [0.0, 0.95], zeros(5))
+node_triploid = Node(3, ones(4), [0.05, 0.05], fill(NaN, 4))
+node_tetploid = Node(4, ones(5), [0.00, 0.95], fill(NaN, 5))
 deme = Deme([node_diploid, node_triploid, node_tetploid], [1.0, 0.0, 0.0])
 xs = iterate_map(generation, deme, 10)
 plot_sim(xs)
@@ -387,21 +387,38 @@ plot_sim(xs, xscale=:log10)
 ````
 ![](singledeme-48.svg)
 
-The system can have quite some weird (but biologically uninteresting)
-dynamics, consider this one:
+I would expect this doesn't happen when we start off with p=0.5.
 
 ````julia
-node_diploid  = Node(2, ones(3), [0.95, 0.05], [0.35, 0.05, 0.6])
-node_triploid = Node(3, ones(4), [0.50, 0.50], zeros(4))
-node_tetploid = Node(4, ones(5), [0.0, 1.0], zeros(5))
+node_diploid  = Node(2, ones(3), [0.95, 0.05], [0.0, 1.0, 0.0])
+node_triploid = Node(3, ones(4), [0.05, 0.05], fill(NaN, 4))
+node_tetploid = Node(4, ones(5), [0.00, 0.95], fill(NaN, 5))
 deme = Deme([node_diploid, node_triploid, node_tetploid], [1.0, 0.0, 0.0])
-xs = iterate_map(generation, deme, 1000)
+xs = iterate_map(generation, deme, 10000)
 plot_sim(xs, xscale=:log10)
 ````
 ![](singledeme-50.svg)
 
+Indeed, note BTW that tetraploids are *not* in HW proportions! $0.5^4 =
+0.0625 \ne 0.1318$!
+
 Note that fitnesses can be genotype/cytotype specific in the above
-implementation.
+implementation. Consider this example where we have a completely recessive
+deleterious allele, so that all 1 homozygotes have fitness 1-s, whereas all
+other genotypes have relative fitness 1.
+
+````julia
+s = 0.1
+node_diploid  = Node(2, [1., 1., 1-s],         [0.95, 0.05], [0.0, 1.0, 0.0])
+node_triploid = Node(3, [1., 1., 1., 1-s],     [0.05, 0.05], fill(NaN, 4))
+node_tetploid = Node(4, [1., 1., 1., 1., 1-s], [0.00, 0.95], fill(NaN, 5))
+deme = Deme([node_diploid, node_triploid, node_tetploid], [1.0, 0.0, 0.0])
+xs = iterate_map(generation, deme, 1000)
+plot_sim(xs, xscale=:log10)
+````
+![](singledeme-53.svg)
+
+## Two deme habitat
 
 <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons License" style="border-width:0" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a><br />This work is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
 
