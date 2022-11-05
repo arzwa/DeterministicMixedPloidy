@@ -6,12 +6,16 @@
 # single-locus system (discrete generations). The system may consist of
 # diploids, triploids and tetraploids, and allows for arbitrary single-locus
 # selection schemes.
-# The implementation is for a single panmictic deme.  Eventually, the goal is
-# to connect multiple demes by migration, but now let's consider the dynamics
-# within one such panmictic unit.
 
+# ## Single deme
+# Here I implement the dynamics for a single panmictic deme.  Eventually, the
+# goal is to connect multiple demes by migration (see below), but we first
+# consider the dynamics within one such panmictic unit.
+
+# First let's load some packages
 using Printf, Plots, Literate
 default(framestyle=:box, gridstyle=:dot, guidefont=9, titlefont=9, title_loc=:left)
+# This file can be compiled to markdown using `Literate.markdown(...)`.
 
 # Node within a Deme, represents a single subpopulation of a particular fixed
 # cytotype.
@@ -28,6 +32,13 @@ update_node(n::Node, g) = Node(n.ploidy, n.viability, n.fertility, g)
 # Note that the sum of the `fertility` vector gives the fertility of an
 # individual in that node, hence the name.
 
+# Here's an example of a node:
+node_diploid  = Node(2, ones(3), [0.95, 0.05], [0.35, 0.05, 0.6])
+# This represents a diploid subpopulation, where all three genotypes have equal
+# fitness (`ones(3) == [1, 1, 1]`), where each gamete is haploid with probabili
+# 0.95 and diploid else, and where the initial genotype frequencies are 0.35,
+# 0.05 and 0.6 for genotypes `00`, `01`, and `11` respectively.
+
 # A deme is a panmictic unit, i.e. all nodes contribute gamete to one gamete
 # pool according to their respective proportion in the deme and gamete
 # production table.
@@ -40,7 +51,7 @@ end
 # Constructor for if we don't know mean fitness...
 Deme(n, p) = Deme(n, p, NaN)
 
-# Function to compute the allele frequency in a deme
+# Function to compute the allele frequency (for the `0` allele) in a deme
 function allele_frequency(deme::Deme)
     f = 0.
     for (n, p) in zip(deme.nodes, deme.proportions)
@@ -50,6 +61,7 @@ function allele_frequency(deme::Deme)
     return f
 end
 
+# Functions to compute the allele frequencies for each cytotype
 allele_frequency(::Val{2}, x) = x[1] + x[2]/2
 allele_frequency(::Val{3}, x) = x[1] + 2*x[2]/3 + x[3]/3
 allele_frequency(::Val{4}, x) = x[1] + 3*x[2]/4 + x[3]/2 + x[4]/4
@@ -111,9 +123,9 @@ function gametes(node::Node)
     return g
 end
 
-# See below for explanation of the zygote matrix `Z`
 # This function obtains the genotype frequencies after random union of gamates
-# (as repreented by the `Z` matrix).
+# (as represented by the `Z` matrix).
+# See below for explanation of the zygote matrix `Z`
 _genotypes(::Val{2}, Z) = [Z[1,1], 2Z[1,2], Z[2,2]]                                # 00 01 11
 _genotypes(::Val{3}, Z) = [Z[1,3], Z[1,4] + Z[2,3], Z[1,5] + Z[2,4], Z[2,5]] .* 2  # 000 001 011 111
 _genotypes(::Val{4}, Z) = [Z[3,3], 2Z[3,4], 2Z[3,5] + Z[4,4], 2Z[4,5], Z[5,5]]     # 0000 0001 0011 0111 1111
@@ -134,8 +146,8 @@ function get_gametepool(deme::Deme{T}) where T
     return gamete_pool
 end
 
-# Now to define the map of the dynamical system for a single deme (panmictic
-# unit)
+# Now we can define the map of the dynamical system for a single deme
+# (panmictic unit)
 function generation(deme::Deme{T}) where T
     ## 1. Collect all the gametes
     gamete_pool = get_gametepool(deme)
@@ -214,10 +226,21 @@ xs = iterate_map(generation, deme, 10)
 plot_sim(xs)
 
 # Indeed we do reach equilibrium very quickly, but not in a single generation
-# (as would be in the case of a pure diploid population). The allele frequency
-# should remain constant I believe, as there is no selection. It seems to be
-# approximately so, but I'm not sure whether th 0.0002 increase is due to
-# floating point arithmetic, a bug, or something I don't understand.
+# (as would be in the case of a pure diploid population). 
+# The allele frequency remains constant as expected.
+
+# The critical unreduced gamete formation rate should be about 0.17, let's
+# check that:
+function test_crit_fun(u)
+    node_diploid  = Node(2, ones(3),  [ 1-u,    u], [1.0, 0.0, 0.0])
+    node_triploid = Node(3, zeros(4), [0.00, 0.00], fill(NaN, 4))
+    node_tetploid = Node(4, ones(5),  [0.00, 1.00], fill(NaN, 5))
+    deme = Deme([node_diploid, node_triploid, node_tetploid], [1.0, 0.0, 0.0])
+    xs = iterate_map(generation, deme, 5000)
+    last(xs).proportions
+end
+plot(0:0.01:0.3, hcat(map(test_crit_fun, 0:0.01:0.3)...) |> permutedims)
+vline!([1/(2√2+3)], legend=false)
 
 # Now still without selection but also with triploids, again starting from 100%
 # diploids.
