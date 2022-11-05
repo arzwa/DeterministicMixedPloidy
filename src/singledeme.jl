@@ -240,7 +240,8 @@ function test_crit_fun(u)
     last(xs).proportions
 end
 plot(0:0.01:0.3, hcat(map(test_crit_fun, 0:0.01:0.3)...) |> permutedims)
-vline!([1/(2√2+3)], legend=false)
+vline!([1/(2√2+3)], color=:black, ls=:dash, legend=false, 
+       ylabel="cytotype frequency", xlabel="\$u\$", size=(300,200))
 
 # Now still without selection but also with triploids, again starting from 100%
 # diploids.

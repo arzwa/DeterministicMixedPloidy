@@ -53,7 +53,7 @@ node_diploid  = Node(2, ones(3), [0.95, 0.05], [0.35, 0.05, 0.6])
 ````
 
 ````
-Main.var"##619".Node{Float64}(2, [1.0, 1.0, 1.0], [0.95, 0.05], [0.35, 0.05, 0.6])
+Main.var"##663".Node{Float64}(2, [1.0, 1.0, 1.0], [0.95, 0.05], [0.35, 0.05, 0.6])
 ````
 
 This represents a diploid subpopulation, where all three genotypes have equal
@@ -80,7 +80,7 @@ Deme(n, p) = Deme(n, p, NaN)
 ````
 
 ````
-Main.var"##619".Deme
+Main.var"##663".Deme
 ````
 
 Function to compute the allele frequency (for the `0` allele) in a deme
@@ -404,7 +404,8 @@ function test_crit_fun(u)
     last(xs).proportions
 end
 plot(0:0.01:0.3, hcat(map(test_crit_fun, 0:0.01:0.3)...) |> permutedims)
-vline!([1/(2√2+3)], legend=false)
+vline!([1/(2√2+3)], color=:black, ls=:dash, legend=false,
+       ylabel="cytotype frequency", xlabel="\$u\$", size=(300,200))
 ````
 ![](singledeme-54.svg)
 
@@ -535,7 +536,7 @@ hab = TwoDemeHabitat([0., 0., 0.5], deme1, deme2)
 ````
 
 ````
-Main.var"##619".TwoDemeHabitat{Float64}([0.0, 0.0, 0.5], Deme, allele frequency = 1.0000
+Main.var"##663".TwoDemeHabitat{Float64}([0.0, 0.0, 0.5], Deme, allele frequency = 1.0000
 Node (ploidy=2) 1.00, genotypes: 1.0000, 0.0000, 0.0000
 Node (ploidy=3) 0.00, genotypes: NaN, NaN, NaN, NaN
 Node (ploidy=4) 0.00, genotypes: NaN, NaN, NaN, NaN, NaN
@@ -561,7 +562,7 @@ xs[end]
 ````
 
 ````
-Main.var"##619".TwoDemeHabitat{Float64}([0.0, 0.0, 0.5], Deme, allele frequency = 0.9595
+Main.var"##663".TwoDemeHabitat{Float64}([0.0, 0.0, 0.5], Deme, allele frequency = 0.9595
 Node (ploidy=2) 0.89, genotypes: 0.9278, 0.0709, 0.0012
 Node (ploidy=3) 0.11, genotypes: 0.8787, 0.0743, 0.0455, 0.0015
 Node (ploidy=4) 0.00, genotypes: 0.4170, 0.0405, 0.0851, 0.0405, 0.4170
